@@ -6,6 +6,7 @@ $hash_lastLogonTimestamp = @{Name="LastLogonTimeStamp";Expression={([datetime]::
 $today = Get-Date
 $disableTime = ($today).Adddays(-($daysInactiveDisable))
 $disableList = @()
+$deleteTime = ($today).Adddays(-($daysInactiveDelete))
 $ToBeDeletedList = @()
 $deletedOU = "OU=Computers to be Deleted,OU=IT Dumpster,OU=Student Affairs,DC=dsa,DC=reldom,DC=tamu,DC=edu" #Move PCs to Computers to be deleted OU on disable
 
@@ -31,7 +32,7 @@ function DisableComputers
 function ComputersToBeDeleted
 {
     $description = "Computer disabled for inactivity on $today"
-    
+    $computerDescription = "Get-ADComputer AD-test -Properties Description | Select-Object -ExpandProperty description" 
     #Create array of disabled computers with last logon date >180 days 
     $ToBeDeletedList = Get-ADComputer -Filter {LastLogonTimeStamp -lt $deleteTime} -SearchBase "OU=Student Affairs,DC=dsa,DC=reldom,DC=tamu,DC=edu" -resultSetSize $null `
     -Properties Name, OperatingSystem, SamAccountName, DistinguishedName, LastLogonTimeStamp, Enabled | Where { $_.Enabled -eq $false}
@@ -39,7 +40,8 @@ function ComputersToBeDeleted
     #Iterate through array, move to To Be Deleted OU
     foreach ($Computer in $ToBeDeletedList) 
     {
-        Move-ADObject -Identity ($Computer).DistinguishedName -TargetPath $deletedOU -WhatIf
+
+       Move-ADObject -Identity ($Computer).DistinguishedName -TargetPath $deletedOU -WhatIf
     }
     $ToBeDeletedList | select Name, DistinguishedName, $hash_lastLogonTimestamp, Enabled | Export-Csv "C:\TEMP\toBeDeletedComputers.csv"
 }
